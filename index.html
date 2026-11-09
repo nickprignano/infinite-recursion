@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Infinite Recursion</title>
-  <meta name="description" content="An original fixed shooter where the swarm learns your habits while you learn its.">
+  <meta name="description" content="An original arcade shooter in two modes, where the swarm learns your habits while you learn its.">
   <script>
     // Apply the saved light/dark choice before the first paint, like prignano-theme's THEME_INIT_SCRIPT.
     (function () { try { var m = document.cookie.match(/(?:^|; )theme=(light|dark)/); var t = m ? m[1] : localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {} })();
@@ -42,6 +42,10 @@
         <section class="screen" id="screen-title">
           <h1>Infinite Recursion</h1>
           <p class="tagline">The swarm learns you. Learn it back.</p>
+          <div class="modes" role="radiogroup" aria-label="Mode">
+            <label><input type="radio" name="mode" value="swarm"> Swarm</label>
+            <label><input type="radio" name="mode" value="divide"> Divide</label>
+          </div>
           <div class="buttons">
             <button type="button" class="primary" data-go="play">Play</button>
             <button type="button" data-go="how">How to play</button>
@@ -58,12 +62,19 @@
 
         <section class="screen" id="screen-how" hidden>
           <h2>How to play</h2>
+          <p>Two modes, picked on the title screen. The swarm learns you in both.</p>
+          <h3>Swarm</h3>
           <p>Clear each wave before the swarm reaches the ground. Barriers soak up shots from both sides and come back each wave.</p>
           <p><b>Phone:</b> touch the strip under the playfield. The cannon follows your thumb and fires while you touch. Lift to stop.</p>
           <p><b>Keyboard:</b> arrows or A and D to move, Space to fire, P to pause, M for sound.</p>
           <p><b>The swarm learns.</b> After each wave it looks at your habits: where you stand, how often you miss, which columns you hit first, and how long you hide. Your strongest habit becomes a lesson that shapes the next wave against you. The card between waves tells you what it learned and how to beat it.</p>
           <p>You can read the swarm: antennas aim at you, vents under the body fire more, side fins dodge. Bigger parts mean more of it.</p>
           <p>Once enough of a wave is gone, the Probe crosses the top. Hit it and the swarm learns nothing from that wave. Clearing a wave without teaching it anything pays a bonus.</p>
+          <h3>Divide</h3>
+          <p>Fly a ship that turns, thrusts and drifts. Everything wraps from one edge to the other. Every node you hit splits into two smaller copies of itself, down to the smallest, which breaks for good. Clear every piece to finish the wave, and don't touch any of them.</p>
+          <p><b>Phone:</b> hold the four buttons under the playfield: turn left, turn right, thrust and fire. Use both thumbs.</p>
+          <p><b>Keyboard:</b> Left and Right (or A and D) to turn, Up or W to thrust, Space to fire.</p>
+          <p>Nodes show their traits too: a tick pointing where it's heading means it aimed at you as it came in, trails mean speed, and side fins mean it can slide out of the way of a shot. The Probe drifts across once enough pieces are gone.</p>
           <p>This is a fast reflex game and has no screen-reader mode.</p>
           <p>To install it on an iPhone or iPad, tap Share, then Add to Home Screen. It plays offline once installed.</p>
           <div class="buttons"><button type="button" data-go="title">Back</button></div>
@@ -71,7 +82,7 @@
 
         <section class="screen" id="screen-about" hidden>
           <h2>About</h2>
-          <p>Infinite Recursion is an original fixed shooter: our own name, shapes and sounds, made with plain JavaScript. It's open source under the MIT license.</p>
+          <p>Infinite Recursion is an original arcade shooter in two modes, a fixed shooter (Swarm) and a drifting shooter (Divide): our own name, shapes and sounds, made with plain JavaScript. It's open source under the MIT license.</p>
           <p>The idea of invaders that adapt between waves comes from <a href="https://github.com/victorqribeiro/invaderz" rel="noopener">invaderz</a> by Victor Ribeiro (MIT). Ours learns differently, from your habits, and the code is our own.</p>
           <p>Site look: prignano-theme (MIT). Sounds are synthesized in the browser. Nothing you do here leaves your device.</p>
           <p><a href="https://github.com/nickprignano/infinite-recursion" rel="noopener">Source code</a></p>
@@ -80,7 +91,10 @@
 
         <section class="screen" id="screen-scores" hidden>
           <h2>Scores</h2>
+          <h3>Swarm</h3>
           <ol class="scores" id="score-list"></ol>
+          <h3>Divide</h3>
+          <ol class="scores" id="score-list-divide"></ol>
           <div class="buttons"><button type="button" data-go="title">Back</button></div>
         </section>
 
@@ -119,6 +133,12 @@
     <div id="strip" aria-label="Touch here to move and fire">
       <span class="touch-only">touch to move and fire</span>
       <span class="mouse-only">drag here, or use arrows and Space</span>
+    </div>
+    <div id="pads" hidden>
+      <button type="button" data-pad="left" aria-label="Turn left" tabindex="-1">⟲</button>
+      <button type="button" data-pad="right" aria-label="Turn right" tabindex="-1">⟳</button>
+      <button type="button" data-pad="thrust" aria-label="Thrust" tabindex="-1">▲</button>
+      <button type="button" data-pad="fire" aria-label="Fire" tabindex="-1">●</button>
     </div>
   </main>
   <script type="module" src="src/main.js"></script>

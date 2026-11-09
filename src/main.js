@@ -1,9 +1,11 @@
-// Screens and game flow: title, play, the card between waves, pause, game over and scores, plus
-// sound, the site header and the installable app.
+// Screens and game flow: title and mode switch, play, the card between waves, pause, game over
+// and scores, plus sound, the site header and the installable app.
 import { Audio } from './audio.js';
+import * as divide from './divide.js';
 import { Renderer } from './draw.js';
 import { Effects } from './effects.js';
-import { aliveCount, createGame, startWave, step, STEP, swarmSpeed } from './game.js';
+import * as swarm from './game.js';
+import { aliveCount, STEP, swarmSpeed } from './game.js';
 import { Input } from './input.js';
 import { finalModel } from './learner.js';
 import { randomSeed } from './rng.js';
@@ -15,16 +17,23 @@ const CARD_MIN_MS = 1500;
 const MAX_CATCH_UP = 5;
 
 const $ = (id) => document.getElementById(id);
-const [waves, lessons] = await Promise.all(['data/waves.json', 'data/lessons.json'].map(async (url) => (await fetch(url)).json()));
+const [waves, lessons, divideConfig] = await Promise.all(
+  ['data/waves.json', 'data/lessons.json', 'data/divide.json'].map(async (url) => (await fetch(url)).json()),
+);
 const config = { ...waves, lessons };
+// Each mode: its numbers, its game module, and whether it learns yet.
+const MODES = {
+  swarm: { config, game: swarm, learns: true, scores: new Scores(undefined, 'swarm') },
+  divide: { config: divideConfig, game: divide, learns: false, scores: new Scores(undefined, 'divide') },
+};
 const settings = new Settings();
-const scores = new Scores();
 const renderer = new Renderer($('field'));
-const input = new Input($('strip'), config.field.width);
+const input = new Input($('strip'), config.field.width, $('pads'));
 const audio = new Audio();
 const installed = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
 
 let game = null;
+let mode = MODES[settings.mode]; // the mode being played, or picked on the title
 let effects = null;
 let screen = 'title';
 let paused = false;
@@ -40,12 +49,18 @@ function show(name) {
   screen = name;
   for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== `screen-${name}`;
   $('btn-pause').hidden = !(name === 'play' || name === 'pause');
-  if (name === 'scores') fillScores($('score-list'), scores.list());
+  if (name === 'scores') {
+    fillScores($('score-list'), MODES.swarm.scores.list());
+    fillScores($('score-list-divide'), MODES.divide.scores.list());
+  }
   if (name === 'title') {
     $('btn-install').hidden = !installPrompt;
     $('btn-update').hidden = !updateWaiting;
   }
-  if (name !== 'play') audio.probe(false);
+  if (name !== 'play') {
+    audio.probe(false);
+    audio.thrust(false);
+  }
   const focus = document.querySelector(`#screen-${name} .primary, #screen-${name} button`);
   if (focus && name !== 'play') focus.focus({ preventScroll: true });
 }
@@ -82,6 +97,23 @@ for (const button of document.querySelectorAll('[data-go]')) {
   });
 }
 
+// The mode switch on the title: Divide plays with four buttons in place of the strip.
+function pickMode(name) {
+  mode = MODES[name];
+  game = null;
+  for (const radio of document.querySelectorAll('input[name="mode"]')) radio.checked = radio.value === name;
+  $('strip').hidden = name !== 'swarm';
+  $('pads').hidden = name !== 'divide';
+  demo = null;
+  layout();
+}
+for (const radio of document.querySelectorAll('input[name="mode"]')) {
+  radio.addEventListener('change', () => {
+    settings.set('mode', radio.value);
+    pickMode(radio.value);
+  });
+}
+
 $('set-easy').checked = settings.easy;
 $('set-reduce').checked = settings.reduceSwitch;
 $('set-easy').addEventListener('change', (e) => settings.set('easy', e.target.checked));
@@ -92,8 +124,8 @@ $('set-reduce').addEventListener('change', (e) => settings.set('reduceSwitch', e
 function newGame() {
   // ?seed=N replays a run (scores keep each run's seed).
   const seed = Number(new URLSearchParams(location.search).get('seed')) || randomSeed();
-  game = createGame(config, { seed, easy: settings.easy });
-  effects = new Effects(config.field, { reduced: () => settings.reduced });
+  game = mode.game.createGame(mode.config, { seed, easy: settings.easy });
+  effects = new Effects(mode.config.field, { reduced: () => settings.reduced });
   input.clear();
   accumulator = 0;
   marchClock = 0;
@@ -104,13 +136,13 @@ function newGame() {
 function hud() {
   $('hud-score').textContent = game ? game.score : 0;
   $('hud-wave').textContent = game ? game.wave : 1;
-  $('hud-lives').textContent = game ? game.lives : config.cannon.lives;
+  $('hud-lives').textContent = game ? game.lives : 3;
 }
 
 function waveCleared(events) {
   const cleared = events.find((e) => e.type === 'cleared');
   const extra = events.some((e) => e.type === 'extra-life');
-  const { report } = cleared;
+  const report = cleared.report ?? { learned: [], repeated: [], faded: [], blocked: false };
   const lines = [];
   const add = (text, cls) => {
     const p = document.createElement('p');
@@ -124,7 +156,7 @@ function waveCleared(events) {
     add(l.counter, 'counter');
   }
   for (const id of report.repeated) add(`You did it again, so it keeps this one: ${config.lessons.find((l) => l.id === id).name}.`);
-  if (!report.learned.length && !report.repeated.length && !report.blocked) add('The swarm learned nothing about you this wave.');
+  if (!report.learned.length && !report.repeated.length && !report.blocked && mode.learns) add('The swarm learned nothing about you this wave.');
   if (report.faded.length) add(`It forgot: ${report.faded.join(', ')}.`, 'quiet');
   add(`Bonus ${cleared.bonus}${cleared.outsmarted ? `, outsmarted ${cleared.outsmarted}` : ''}.${extra ? ' Extra life.' : ''}`, 'quiet');
   $('card-title').textContent = `Wave ${game.wave} cleared`;
@@ -140,8 +172,8 @@ function waveCleared(events) {
 
 function nextWave() {
   if (screen !== 'card' || performance.now() < cardReadyAt) return;
-  startWave(game, game.wave + 1);
-  effects = new Effects(config.field, { reduced: () => settings.reduced });
+  mode.game.startWave(game, game.wave + 1);
+  effects = new Effects(mode.config.field, { reduced: () => settings.reduced });
   accumulator = 0;
   show('play');
   hud();
@@ -153,11 +185,11 @@ addEventListener('pointerdown', () => nextWave());
 function gameOver() {
   const landed = game.endReason === 'landed';
   $('over-title').textContent = landed ? 'The swarm landed' : 'Out of lives';
-  const model = finalModel(game);
-  $('over-text').textContent = `Score ${game.score}, wave ${game.wave}. ${
-    model.length ? `The swarm learned: ${model.join(', ')}.` : 'The swarm learned nothing about you.'
-  }`;
+  const model = mode.learns ? finalModel(game) : [];
+  const learned = model.length ? ` The swarm learned: ${model.join(', ')}.` : mode.learns ? ' The swarm learned nothing about you.' : '';
+  $('over-text').textContent = `Score ${game.score}, wave ${game.wave}.${learned}`;
   audio.play('over');
+  const { scores } = mode;
   const qualifies = scores.qualifies(game.score);
   $('name-form').hidden = !qualifies;
   $('over-buttons').hidden = qualifies;
@@ -174,7 +206,7 @@ $('name-form').addEventListener('submit', (e) => {
     $('name-input').select();
     return;
   }
-  const list = scores.add(name, game.score, { wave: game.wave, seed: game.seed, easy: game.easy });
+  const list = mode.scores.add(name, game.score, { wave: game.wave, seed: game.seed, easy: game.easy });
   const mine = list.find((s) => s.name === name && s.score === game.score && s.seed === game.seed);
   fillScores($('over-scores'), list, mine);
   $('name-form').hidden = true;
@@ -228,10 +260,15 @@ function toggleMute() {
 $('btn-mute').addEventListener('click', toggleMute);
 updateMuteButton();
 
-const SOUNDS = { fire: 'fire', kill: 'kill', chip: 'chip', probe: 'probe', hit: 'hit', 'extra-life': 'extra-life' };
+const SOUNDS = { fire: 'fire', kill: 'kill', split: 'split', chip: 'chip', probe: 'probe', hit: 'hit', 'extra-life': 'extra-life' };
 function sounds(events) {
   for (const e of events) if (SOUNDS[e.type]) audio.play(SOUNDS[e.type]);
   audio.probe(Boolean(game.probe));
+  if (mode === MODES.divide) {
+    // Divide has a thrust hiss and no march.
+    audio.thrust(game.ship.alive && game.ship.thrusting);
+    return;
+  }
   // The march: one beat per stretch of swarm travel, so it quickens as the swarm speeds up.
   marchClock += STEP;
   const beat = Math.max(0.18, Math.min(0.9, (0.9 * config.swarm.speed) / swarmSpeed(game)));
@@ -246,16 +283,16 @@ function sounds(events) {
 function layout() {
   const stage = $('stage').getBoundingClientRect();
   const room = { w: stage.width - 12, h: stage.height - 12 };
-  const ratio = config.field.width / config.field.height;
+  const ratio = mode.config.field.width / mode.config.field.height;
   const w = Math.max(120, Math.floor(Math.min(room.w, room.h * ratio)));
   const h = Math.floor(w / ratio);
   $('frame').style.width = `${w}px`;
   $('frame').style.height = `${h}px`;
   $('strip').style.width = `${w}px`;
-  renderer.resize(w, h, config.field);
+  $('pads').style.width = `${w}px`;
+  renderer.resize(w, h, mode.config.field);
 }
 addEventListener('resize', layout);
-layout();
 
 function frame(now) {
   const dt = Math.min(0.25, (now - last) / 1000);
@@ -268,10 +305,13 @@ function frame(now) {
     accumulator = Math.min(accumulator + dt, STEP * MAX_CATCH_UP);
     while (accumulator >= STEP && screen === 'play') {
       accumulator -= STEP;
-      const events = step(game, input.state());
+      const events = mode.game.step(game, input.state());
       if (events.length) effects.add(events, game.time);
       if (game.phase === 'play') sounds(events);
-      else audio.probe(false);
+      else {
+        audio.probe(false);
+        audio.thrust(false);
+      }
       if (game.phase === 'cleared') waveCleared(events);
       else if (game.phase === 'over') gameOver();
     }
@@ -283,12 +323,13 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-// Behind the title screen: a still swarm, so the first screen isn't empty.
+// Behind the title screen: the picked mode, still, so the first screen isn't empty.
 let demo = null;
 function demoState() {
-  demo ??= createGame(config, { seed: 7 });
+  demo ??= mode.game.createGame(mode.config, { seed: 7 });
   return demo;
 }
+pickMode(settings.mode);
 
 requestAnimationFrame(frame);
 

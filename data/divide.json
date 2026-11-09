@@ -1,0 +1,43 @@
+{
+  "field": { "width": 300, "height": 400 },
+  "ship": {
+    "turnRate": 270,
+    "thrust": 200,
+    "drag": 0.5,
+    "topSpeed": 160,
+    "radius": 7,
+    "lives": 3,
+    "maxLives": 6,
+    "extraLifeEvery": 3,
+    "safeRadius": 60,
+    "respawnDelay": 1,
+    "respawnTimeout": 3,
+    "faint": 1.5,
+    "faintTimeout": 3
+  },
+  "shots": { "speed": 300, "life": 0.75, "max": 3, "cooldown": 0.2 },
+  "nodes": {
+    "perWave": [3, 4, 4, 5, 5, 6],
+    "growEvery": 2,
+    "max": 8,
+    "radius": [20, 12, 6],
+    "speed": [30, 45, 60],
+    "speedPerWave": 0.05,
+    "speedCap": 180,
+    "splitAngle": 35,
+    "spawnDistance": 120,
+    "spin": 0.5
+  },
+  "traits": {
+    "speed": { "perLevel": 0.2 },
+    "dodge": { "chance": [0, 0.2, 0.4, 0.6], "cooldown": 1.5, "extra": 4, "time": 0.15, "range": 70, "shipClear": 40 }
+  },
+  "probe": { "at": 0.4, "radius": 10, "speed": 50, "bonus": 300 },
+  "points": 20,
+  "waveBonus": 100,
+  "outsmartedBonus": 250,
+  "easy": 0.75,
+  "budgets": [2, 5, 8, 11, 14, 17],
+  "budgetGrowth": 3,
+  "fairness": { "runs": 50, "maxWave": 8, "minMedian": 3, "maxMedian": 9, "maxShift": 2, "maxSteps": 36000 }
+}

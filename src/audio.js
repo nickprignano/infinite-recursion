@@ -1,5 +1,6 @@
 // Sounds, all synthesized with the Web Audio API, so there's nothing to license. The march is one
-// note that rises in pitch and quickens as the swarm thins, not a melody.
+// note that rises in pitch and quickens as the swarm thins, not a melody. Divide has no march: just a
+// soft hiss while thrusting and a crack when a node splits.
 import { load, save } from './storage.js';
 
 const MUTE_KEY = 'infinite-recursion-muted';
@@ -9,6 +10,7 @@ export class Audio {
     this.muted = load(MUTE_KEY, false) === true;
     this.ctx = null;
     this.warble = null;
+    this.hiss = null;
   }
 
   // Browsers only allow sound after a tap or key press. iOS also suspends sound after the phone
@@ -25,7 +27,10 @@ export class Audio {
   setMuted(muted) {
     this.muted = muted;
     save(MUTE_KEY, muted);
-    if (muted) this.probe(false);
+    if (muted) {
+      this.probe(false);
+      this.thrust(false);
+    }
   }
 
   tone(freq, ms, { type = 'sine', volume = 0.1, slideTo = null, delay = 0 } = {}) {
@@ -85,6 +90,33 @@ export class Audio {
     this.warble = [osc, lfo];
   }
 
+  // Divide's thrust hiss: filtered noise, on while thrusting.
+  thrust(on) {
+    if (!on || this.muted || !this.ctx) {
+      if (this.hiss) {
+        this.hiss.stop();
+        this.hiss = null;
+      }
+      return;
+    }
+    if (this.hiss) return;
+    const { ctx } = this;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    source.buffer = buffer;
+    source.loop = true;
+    filter.type = 'lowpass';
+    filter.frequency.value = 700;
+    gain.gain.value = 0.035;
+    source.connect(filter).connect(gain).connect(ctx.destination);
+    source.start();
+    this.hiss = source;
+  }
+
   // One march beat; `thinned` is the share of the swarm gone (0 to 1).
   march(thinned) {
     if (this.muted || !this.ctx) return;
@@ -100,6 +132,10 @@ export class Audio {
       case 'kill':
         this.noise(120, { volume: 0.05 });
         this.tone(520, 120, { type: 'triangle', volume: 0.05, slideTo: 180 });
+        break;
+      case 'split':
+        this.noise(70, { volume: 0.05 });
+        this.tone(760, 90, { type: 'square', volume: 0.025, slideTo: 380 });
         break;
       case 'chip':
         this.noise(40, { volume: 0.02 });

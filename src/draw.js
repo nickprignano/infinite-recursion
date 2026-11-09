@@ -1,5 +1,6 @@
 // Draws the game on the canvas: vector lines in prignano-theme colors, following light and dark.
 // Glow is a wide faint stroke under a thin bright one, not shadowBlur, which is slow on phones.
+import { pieceVelocity } from './divide.js';
 import { invaderPos } from './game.js';
 
 const TOKENS = ['--bg', '--fg', '--muted', '--accent', '--active', '--border'];
@@ -78,6 +79,42 @@ function dot(ctx, x, y, r) {
   ctx.fill();
 }
 
+// Divide's nodes: a hexagon holding a smaller one holding a smaller one. A piece of a given size
+// draws only the layers from its own inward, so the children of a split are visibly the parent's
+// insides.
+function nested(ctx, radii, size, rot) {
+  for (let s = size; s < radii.length; s++) {
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const a = rot * (s % 2 ? -1 : 1) + (k * Math.PI) / 3;
+      const x = Math.cos(a) * radii[s];
+      const y = Math.sin(a) * radii[s];
+      if (k) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+}
+
+// A node's traits, drawn in its heading's frame (up = where it's going): a tick for Aim, trails for
+// Speed, side fins for Dodge. Bigger per level.
+function nodeTraits(ctx, traits, r) {
+  if (traits.aim) {
+    const tip = -r - 3 - traits.aim * 2;
+    line(ctx, 0, -r - 1, 0, tip);
+    poly(ctx, [[-2, tip + 3], [0, tip], [2, tip + 3]]);
+  }
+  for (let i = 0; i < traits.speed; i++) {
+    const x = (i - (traits.speed - 1) / 2) * 4;
+    line(ctx, x, r + 2, x, r + 5 + r * 0.3);
+  }
+  if (traits.dodge) {
+    const reach = r + 2 + traits.dodge * 2;
+    for (const side of [-1, 1]) poly(ctx, [[side * r * 0.85, -r * 0.3], [side * reach, 0], [side * r * 0.85, r * 0.3]]);
+  }
+}
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -115,6 +152,7 @@ export class Renderer {
   }
 
   render(state, effects, reduced) {
+    if (state.mode === 'divide') return this.renderDivide(state, effects, reduced);
     const { ctx, palette: pal } = this;
     const c = state.config;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -154,30 +192,7 @@ export class Renderer {
       ctx.restore();
     }
 
-    // The Probe: a lens with a faint scan line under it.
-    if (state.probe) {
-      const p = state.probe;
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.save();
-      ctx.globalAlpha = 0.18;
-      ctx.strokeStyle = pal.accent;
-      ctx.lineWidth = 1;
-      line(ctx, 0, 5, 0, 22);
-      ctx.restore();
-      this.glowStroke(() => {
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 11, 4, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(0, -1, 5, Math.PI, 0);
-        ctx.stroke();
-        dot(ctx, -6, 0.5, 0.9);
-        dot(ctx, 0, 1.5, 0.9);
-        dot(ctx, 6, 0.5, 0.9);
-      }, pal.accent, 1.2, reduced);
-      ctx.restore();
-    }
+    if (state.probe) this.drawProbe(state.probe, reduced);
 
     // The cannon (hidden while it respawns after a hit).
     if (state.cannon.respawn <= 0 && state.phase !== 'over') {
@@ -206,7 +221,37 @@ export class Renderer {
       }
     }, pal.fg, 1.2, reduced);
 
-    // Effects: glows (limited), rings, particles.
+    this.drawEffects(effects);
+  }
+
+  // The Probe: a lens with a faint scan line under it.
+  drawProbe(p, reduced) {
+    const { ctx, palette: pal } = this;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = pal.accent;
+    ctx.lineWidth = 1;
+    line(ctx, 0, 5, 0, 22);
+    ctx.restore();
+    this.glowStroke(() => {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 11, 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, -1, 5, Math.PI, 0);
+      ctx.stroke();
+      dot(ctx, -6, 0.5, 0.9);
+      dot(ctx, 0, 1.5, 0.9);
+      dot(ctx, 6, 0.5, 0.9);
+    }, pal.accent, 1.2, reduced);
+    ctx.restore();
+  }
+
+  // Effects: glows (limited), rings, particles.
+  drawEffects(effects) {
+    const { ctx, palette: pal } = this;
     for (const g of effects.glows) {
       const grad = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, g.r);
       grad.addColorStop(0, pal.accent);
@@ -236,5 +281,92 @@ export class Renderer {
       line(ctx, p.x, p.y, p.x - p.vx * 0.04, p.y - p.vy * 0.04);
       ctx.restore();
     }
+  }
+
+  // Draws at every wrapped copy that shows: something near an edge also shows at the other side.
+  wrapped(x, y, r, field, draw) {
+    for (const ox of [-field.width, 0, field.width]) {
+      for (const oy of [-field.height, 0, field.height]) {
+        const cx = x + ox;
+        const cy = y + oy;
+        if (cx + r < 0 || cx - r > field.width || cy + r < 0 || cy - r > field.height) continue;
+        this.ctx.save();
+        this.ctx.translate(cx, cy);
+        draw();
+        this.ctx.restore();
+      }
+    }
+  }
+
+  renderDivide(state, effects, reduced) {
+    const { ctx, palette: pal } = this;
+    const c = state.config;
+    const field = c.field;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = pal.bg;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, field.width, field.height);
+    ctx.clip();
+
+    const sizeColors = [pal.accent, pal.active, pal.fg];
+    for (const p of state.pieces) {
+      const r = c.nodes.radius[p.size];
+      const { vx, vy } = pieceVelocity(state, p);
+      const heading = Math.atan2(vx, -vy);
+      this.wrapped(p.x, p.y, r + 12, field, () => {
+        this.glowStroke(() => {
+          nested(ctx, c.nodes.radius, p.size, p.rot);
+          ctx.rotate(heading);
+          nodeTraits(ctx, p.traits, r);
+        }, sizeColors[p.size], 1.2, reduced);
+      });
+    }
+
+    if (state.probe) this.drawProbe(state.probe, reduced);
+
+    // The ship: a rounded dart with a round cockpit, faint while it can't be hit.
+    const ship = state.ship;
+    if (ship.alive && state.phase !== 'over') {
+      this.wrapped(ship.x, ship.y, 12, field, () => {
+        ctx.rotate(ship.angle);
+        if (ship.faint > 0) ctx.globalAlpha = 0.4;
+        this.glowStroke(() => {
+          ctx.beginPath();
+          ctx.moveTo(0, -10);
+          ctx.lineTo(7, 7);
+          ctx.quadraticCurveTo(0, 2, -7, 7);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(0, -1, 2.2, 0, Math.PI * 2);
+          ctx.stroke();
+        }, pal.fg, 1.3, reduced);
+        if (ship.thrusting) {
+          const flick = Math.floor(state.time * 20) % 2 ? 3 : 0;
+          this.glowStroke(() => {
+            ctx.beginPath();
+            ctx.moveTo(-3, 6);
+            ctx.lineTo(0, 11 + flick);
+            ctx.lineTo(3, 6);
+            ctx.stroke();
+          }, pal.accent, 1.2, reduced);
+        }
+      });
+    }
+
+    this.glowStroke(() => {
+      for (const s of state.shots) {
+        const len = Math.hypot(s.vx, s.vy);
+        line(ctx, s.x, s.y, s.x - (s.vx / len) * 5, s.y - (s.vy / len) * 5);
+      }
+    }, pal.accent, 1.5, reduced);
+
+    this.drawEffects(effects);
+    ctx.restore();
   }
 }

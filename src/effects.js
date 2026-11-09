@@ -7,7 +7,7 @@
 export const MAX_GLOWS_PER_SECOND = 3;
 export const MAX_PARTICLES = 200;
 
-const SIZES = { kill: 14, probe: 26, hit: 30, chip: 0 };
+const SIZES = { kill: 14, split: 14, probe: 26, hit: 30, chip: 0 };
 
 export class Effects {
   constructor(field, { reduced = () => false, random = Math.random } = {}) {
@@ -27,7 +27,7 @@ export class Effects {
       this.rings.push({ x: e.x, y: e.y, r: 2, max: size, age: 0, kind: e.type });
       if (this.reduced()) continue;
       this.tryGlow(e, size, time);
-      const count = e.type === 'kill' ? 8 : 16;
+      const count = e.type === 'kill' || e.type === 'split' ? 8 : 16;
       for (let i = 0; i < count && this.particles.length < MAX_PARTICLES; i++) {
         const a = this.random() * Math.PI * 2;
         const v = 30 + this.random() * 60;

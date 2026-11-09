@@ -1,8 +1,9 @@
 // Service worker: keeps a copy of every game file so the installed app plays offline.
 // VERSION and FILES are written by `node tools/sw-version.mjs`; a test fails if they're stale.
 
-const VERSION = '258da0fba972';
+const VERSION = '0d800203743f';
 const FILES = [
+  'data/divide.json',
   'data/lessons.json',
   'data/waves.json',
   'icons/apple-touch-icon.png',
@@ -13,6 +14,7 @@ const FILES = [
   '/',
   'manifest.webmanifest',
   'src/audio.js',
+  'src/divide.js',
   'src/draw.js',
   'src/effects.js',
   'src/game.js',
