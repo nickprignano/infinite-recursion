@@ -25,6 +25,10 @@ repo: Cloudflare's GitHub app deploys on each push to `main`.
    certificate itself, because the domain's zone is already on the account.
 6. Optional: on the same tab, turn off the `workers.dev` address so the
    game has one home.
+7. Put the game on prignano.ai/games: in `nickprignano/prignanodotai-web`, open a PR that sets
+   the `infinite-recursion` entry in `content/games.json` to
+   `"url": "https://infinite-recursion.prignano.ai"` and `"status": "live"`. The site's weekly
+   link check flags the game if this step is missed.
 
 ## After that
 
