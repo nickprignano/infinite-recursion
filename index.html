@@ -10,6 +10,14 @@
     (function () { try { var m = document.cookie.match(/(?:^|; )theme=(light|dark)/); var t = m ? m[1] : localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {} })();
   </script>
   <meta name="theme-color" content="#f6f7f9">
+  <!-- Installable app (PWA): manifest, icons, iOS home-screen tags. sw.js keeps it playable offline. -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Recursion">
   <link rel="stylesheet" href="styles.css">
   <!-- The shared site theme. If it can't load, styles.css has the same colors as a fallback. -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/nickprignano/prignano-theme@4c2effc3829269e40ad663baf130a6b899a402bb/theme.css">
@@ -23,6 +31,7 @@
         <span>Wave <b id="hud-wave">1</b></span>
         <span>Lives <b id="hud-lives">3</b></span>
       </div>
+      <button type="button" id="btn-mute" aria-pressed="false">🔊</button>
       <button type="button" id="btn-pause" aria-label="Pause" hidden>❚❚</button>
       <button type="button" id="btn-header" aria-label="Hide the site header" aria-expanded="true">▴</button>
     </div>
@@ -37,6 +46,9 @@
             <button type="button" class="primary" data-go="play">Play</button>
             <button type="button" data-go="how">How to play</button>
             <button type="button" data-go="scores">Scores</button>
+            <button type="button" data-go="about">About</button>
+            <button type="button" id="btn-install" hidden>Install as an app</button>
+            <button type="button" id="btn-update" hidden>Update the game</button>
           </div>
           <div class="switches">
             <label><input type="checkbox" id="set-easy"> Easy (slower swarm)</label>
@@ -48,11 +60,21 @@
           <h2>How to play</h2>
           <p>Clear each wave before the swarm reaches the ground. Barriers soak up shots from both sides and come back each wave.</p>
           <p><b>Phone:</b> touch the strip under the playfield. The cannon follows your thumb and fires while you touch. Lift to stop.</p>
-          <p><b>Keyboard:</b> arrows or A and D to move, Space to fire, P to pause.</p>
+          <p><b>Keyboard:</b> arrows or A and D to move, Space to fire, P to pause, M for sound.</p>
           <p><b>The swarm learns.</b> After each wave it looks at your habits: where you stand, how often you miss, which columns you hit first, and how long you hide. Your strongest habit becomes a lesson that shapes the next wave against you. The card between waves tells you what it learned and how to beat it.</p>
           <p>You can read the swarm: antennas aim at you, vents under the body fire more, side fins dodge. Bigger parts mean more of it.</p>
           <p>Once enough of a wave is gone, the Probe crosses the top. Hit it and the swarm learns nothing from that wave. Clearing a wave without teaching it anything pays a bonus.</p>
           <p>This is a fast reflex game and has no screen-reader mode.</p>
+          <p>To install it on an iPhone or iPad, tap Share, then Add to Home Screen. It plays offline once installed.</p>
+          <div class="buttons"><button type="button" data-go="title">Back</button></div>
+        </section>
+
+        <section class="screen" id="screen-about" hidden>
+          <h2>About</h2>
+          <p>Infinite Recursion is an original fixed shooter: our own name, shapes and sounds, made with plain JavaScript. It's open source under the MIT license.</p>
+          <p>The idea of invaders that adapt between waves comes from <a href="https://github.com/victorqribeiro/invaderz" rel="noopener">invaderz</a> by Victor Ribeiro (MIT). Ours learns differently, from your habits, and the code is our own.</p>
+          <p>Site look: prignano-theme (MIT). Sounds are synthesized in the browser. Nothing you do here leaves your device.</p>
+          <p><a href="https://github.com/nickprignano/infinite-recursion" rel="noopener">Source code</a></p>
           <div class="buttons"><button type="button" data-go="title">Back</button></div>
         </section>
 
