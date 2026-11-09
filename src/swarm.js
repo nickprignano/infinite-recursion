@@ -52,13 +52,14 @@ export function spreadBudget(weights, budget) {
   return levels;
 }
 
-// Gives each invader its traits for the wave. weightOf(invader, trait) > 0.
-export function assignTraits(invaders, budget, weightOf) {
+// Gives each invader its traits for the wave. weightOf(invader, trait) > 0. Divide passes its own
+// trait names.
+export function assignTraits(invaders, budget, weightOf, traits = TRAITS) {
   const weights = [];
-  for (const inv of invaders) for (const t of TRAITS) weights.push(weightOf(inv, t));
+  for (const inv of invaders) for (const t of traits) weights.push(weightOf(inv, t));
   const levels = spreadBudget(weights, budget);
   invaders.forEach((inv, k) => {
-    inv.traits = Object.fromEntries(TRAITS.map((t, j) => [t, levels[k * TRAITS.length + j]]));
+    inv.traits = Object.fromEntries(traits.map((t, j) => [t, levels[k * traits.length + j]]));
   });
 }
 

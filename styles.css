@@ -80,6 +80,34 @@ body { display: flex; flex-direction: column; height: 100dvh; padding-top: env(s
   cursor: crosshair;
 }
 
+/* Divide's four hold buttons, in place of the strip. */
+#pads {
+  flex-shrink: 0;
+  align-self: center;
+  height: clamp(64px, 14vh, 112px);
+  margin-bottom: max(8px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+#pads button {
+  min-width: 44px;
+  min-height: 44px;
+  font: inherit;
+  font-size: 1.4rem;
+  color: var(--muted);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  touch-action: none;
+  cursor: pointer;
+}
+#pads button[data-pad="thrust"] { margin-left: 10px; }
+
 .screen {
   position: absolute;
   inset: 0;
@@ -96,6 +124,11 @@ body { display: flex; flex-direction: column; height: 100dvh; padding-top: env(s
 }
 .screen h1 { margin: 0; font-size: clamp(1.5rem, 6vw, 2.2rem); letter-spacing: 0.02em; }
 .screen h2 { margin: 0; font-size: 1.3rem; }
+.screen h3 { margin: 4px 0 0; font-size: 1rem; }
+.modes { display: flex; gap: 6px; }
+.modes label { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
+.modes label:has(input:checked) { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.modes input { min-height: 0; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 .screen p { margin: 0; max-width: 32ch; line-height: 1.45; }
 .tagline, .hint { color: var(--muted); }
 .screen a { color: var(--accent); }

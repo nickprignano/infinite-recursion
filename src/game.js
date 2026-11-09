@@ -260,8 +260,8 @@ function enemyFire(state) {
   if (aim > 0) {
     const flight = (cfg.cannon.y - y0) / c.speed;
     let target = state.cannon.x + state.cannon.vx * flight * aim;
-    if (state.learn.aimLane != null) {
-      const laneX = ((state.learn.aimLane + 0.5) / 5) * cfg.field.width;
+    if (state.learn.target != null) {
+      const laneX = ((state.learn.target + 0.5) / 5) * cfg.field.width;
       target += (laneX - target) * cfg.traits.aim.laneBlend * aim;
     }
     const max = cfg.traits.aim.maxVx * aim;

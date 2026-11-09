@@ -268,3 +268,217 @@ breeding layer, shared leaderboard, two players, a "watch it learn" chart, music
 11. A banned list of invader names would hit generic words. → Exact title, maker, title phrase.
 12. Builder-facing numbers missing. → All in `waves.json`; Dodge capped at 60% with a cooldown;
     Easy defined.
+
+## Amendment 1: a second mode, Divide (2026-11-09)
+
+Status: draft, red-teamed once by Fable (2026-11-09), waiting for the owner's approval. Asked for
+by the owner on 2026-11-09 ("an asteroids mode"). Nothing in v1 above changes except where this
+section says so.
+
+### What it is
+
+A second mode in the genre Asteroids started: you fly a ship that turns, thrusts and drifts on a
+field that wraps at the edges, and break up shapes that split into smaller pieces when hit. The
+existing mode becomes **Swarm**; the new one is **Divide**, after divide and conquer: every node
+you hit splits into smaller copies of itself, which is recursion you can see.
+
+**The twist carries over.** The same swarm learns your habits and spends a fixed difficulty budget
+against them, with its own habits and lessons, the same card between waves, the same Probe and the
+same kind of fairness test. One game, one install, one address, two modes.
+
+### Decisions (defaults; change any in review)
+
+| # | Question | Default |
+| --- | --- | --- |
+| A1 | Mode name | **Divide**; the v1 mode is named **Swarm** in the menu |
+| A2 | Phone controls | Four buttons under the playfield: turn left, turn right, thrust, fire |
+| A3 | Learning | Yes, three lessons inside a fixed budget, checked by a fairness test |
+| A4 | Scores | A separate top 10 per mode; the existing table becomes Swarm's |
+| A5 | prignano.ai/games entry | Unchanged: same game and address. How to play and About name both modes |
+
+### What we don't take from the original
+
+Genre mechanics only (turn, thrust, drift, wrapping, pieces that split when shot). Not its name,
+its maker, its thin triangle ship, lumpy rock outlines, the two saucers that shoot, hyperspace, the
+two-note heartbeat, points that rise as pieces shrink, or its 10,000-point bonus life. Here: 3 shots
+not 4, flat points per piece, a Probe that drifts on a diagonal and never shoots. The words test
+bans the title and the maker. Prior art (2026-11-08 survey): two MIT browser versions exist
+(dmcinnes/HTML5-Asteroids, kevinroast/Asteroids-Reloaded); we read neither's code and copy nothing.
+
+### Rules
+
+- **Field.** The same 3:4 playfield (300 by 400 units); ship, shots and nodes wrap to the opposite
+  edge.
+- **Ship.** Turns at a fixed rate, thrusts forward, drifts with light drag and a top speed. Up to 3
+  of your shots at once; each lives a fixed time and wraps. 3 lives, an extra life every 3 waves
+  cleared, as in Swarm. Touching a piece costs a life.
+- **Respawn.** The ship comes back at the center, facing up, once no piece is within the safe
+  radius **or after 3 s**, whichever is first. It's drawn faint and can't be hit for 1.5 s (3 s when
+  the timeout brought it back). No blinking.
+- **Nodes.** Each wave starts with N large nodes entering from the edges, at least the spawn
+  distance from the ship. A large node splits into 2 medium, a medium into 2 small, and a small is
+  destroyed. Children leave at fixed angles either side of the parent's heading (never re-aimed),
+  at their own size's speed, and inherit its traits. Everything moves in straight lines; nothing
+  homes.
+- **Pieces.** A wave has 7N pieces (N large, 2N medium, 4N small). A piece is gone when it's hit.
+  The wave clears when all 7N are gone.
+- **The Probe** appears once 40% of the wave's pieces are gone (0.4 × 7N hits). It drifts in from a
+  corner on a diagonal and leaves, never shoots and can't hurt you. Hitting it scores its bonus and
+  blocks new lessons that wave, as in Swarm.
+- **Scoring.** Flat points per piece, wave-clear bonus, Probe bonus, and the outsmarted bonus for a
+  wave that taught the swarm nothing.
+- **Easy** slows pieces by 25%. Your ship stays the same.
+- **Deliberately missing:** enemies that shoot, hyperspace, shields, power-ups, bosses.
+
+### Traits and the budget
+
+Each large node gets three traits, 0 to 3, and its children inherit them. Every level does
+something:
+
+| Trait | Per level |
+| --- | --- |
+| Aim | When the node **enters** (only then), its heading turns a third of the way per level toward its target: your ship, or the zone a lesson names. Entry is at least the spawn distance away, so you see it coming |
+| Speed | Moves 20% faster. No piece ever moves faster than 60% of your shot speed |
+| Dodge | A chance (20/40/60%, 1.5 s cooldown) to slide sideways when a shot's path would hit it: its own radius plus 4 units in 0.15 s, then its old velocity resumes. Never when the slide could bring it within 40 units of your ship, so a dodge can't land on you |
+
+The budget per wave is listed in `divide.json`, the same every run, and spread over the large nodes
+by the existing `spreadBudget` (largest remainder, so the total always matches). Lessons change only
+where it goes. Inheritance means a trait point doesn't cost the same on every piece, so the claim
+"the budget fixes the difficulty" rests on the fairness test, not on the arithmetic.
+
+### Lessons
+
+The game counts, per wave, leaving out time while the ship is respawning or faint: time spent in
+each cell of a 3 by 3 grid, shots against hits (a hit on any piece counts), and how many small
+pieces are still alive when the Probe appears. The lesson engine is Swarm's (strength past
+threshold, at most 2 active, a third replaces the weaker, fades after 2 waves without the habit,
+the Probe blocks, nothing carries between runs). The learner's Swarm-only `aimLane` becomes a
+generic `target` each mode reads its own way. The three lessons, in `data/divide-lessons.json`,
+with their own thresholds:
+
+| Habit | Lesson | Counter |
+| --- | --- | --- |
+| Parking in one zone | Aim at that zone | Keep moving |
+| Spraying shots (low hit rate) | More Dodge across the wave | Fewer, surer shots |
+| Breaking big pieces and leaving small ones | More Speed across the wave | Clean up as you go |
+
+One lesson per trait, so the card always matches what you see: pointed ticks, trails or fins.
+
+### Controls
+
+- **Phone:** in Divide the strip under the playfield holds four buttons in a row: turn left and
+  turn right under the left thumb, thrust and fire under the right. Hold to act. Each is at least
+  44 px wide; the strip is 112 px tall in portrait. Two touches at once are tracked separately.
+  Pause stays a 44 px button outside the playfield.
+- **Keyboard:** Left and Right (or A and D) turn, Up or W thrusts, Space fires (hold for repeat),
+  P pause, M mute.
+- Both give the game the same input (left, right, thrust, fire), so neither is faster.
+
+### Starting numbers (`data/divide.json`)
+
+| Key | Start |
+| --- | --- |
+| Ship turn rate, thrust, drag, top speed, radius | 270°/s, 200 u/s², 0.5 a second, 160 u/s, 7 |
+| Shots: speed, life, max, cooldown | 300 u/s, 0.75 s, 3, 0.2 s |
+| N large nodes per wave | 3, 4, 4, 5, 5, 6, then +1 every 2 waves, at most 8 |
+| Piece radius large/medium/small | 20, 12, 6 |
+| Piece speed large/medium/small | 30, 45, 60 u/s, +5% a wave, cap 180 u/s |
+| Split angle | 35° either side of the parent's heading |
+| Spawn distance, safe radius, faint time, respawn timeout | 120, 60, 1.5 s, 3 s |
+| Dodge: look-ahead, slide, ship clearance | 70 units, radius + 4 in 0.15 s, 40 units |
+| Spray lesson: shots needed before it can count | 15 |
+| Points per piece, wave bonus, Probe bonus, outsmarted bonus | 20, 100 × wave, 300, 250 |
+| Probe: radius, speed | 10, 50 u/s |
+| Budgets | 2, 5, 8, 11, 14, 17, then +3 a wave, at most 9 × N |
+| Fairness | 50 runs, maxWave 8, minMedian 3, maxMedian 9, maxShift 2, a step cap per run |
+
+### Look and sound
+
+- Nodes are our own: a regular hexagon holding a smaller hexagon holding a smaller one. A hit peels
+  off the outer layer, so the children are visibly the parent's insides. Trait parts: a tick
+  pointing along the heading for Aim, trailing lines for Speed, side fins for Dodge.
+- The ship is our own: a rounded dart with a round cockpit, a short flame while thrusting.
+- Sounds stay synthesized: Swarm's shot and hit, a split crack, a soft thrust hiss. No pulse or
+  heartbeat in Divide.
+- The same flash limiter, particle cap and Reduce effects rules apply.
+
+### Menus and scores
+
+The title gets a Swarm/Divide switch, remembered on the device, and one Play button. Scores shows
+both tables. How to play and About describe both modes; About names the genres only in general
+words.
+
+### Files
+
+```
+src/divide.js             the mode's game: ship, wrap, pieces, splitting, shots, Probe, scoring (pure)
+src/learner.js            lesson engine shared; each mode supplies its own habit counts and target
+src/draw.js, input.js     a Divide renderer and the four-button strip
+src/main.js               the mode switch; each mode exposes createGame, startWave and step
+data/divide.json          the numbers above
+data/divide-lessons.json  Divide's lessons and card text
+test/pilot.mjs            a scripted pilot for Divide tests
+```
+
+### Tests
+
+Added to `node --test`:
+
+1. **Divide game:** a seeded run repeats; ship, shots and pieces wrap; a large splits into 2 medium
+   and a medium into 2 small at the split angles, inheriting traits; no piece passes the speed cap;
+   a hit costs a life and respawn happens at a clear center or the timeout; dodge never fires with
+   the ship within 40 units; the Probe appears at 0.4 × 7N hits; the wave clears at 7N.
+2. **Budget:** every budget in `divide.json` is a whole number no bigger than 9 × N, and assigned
+   traits always sum to it.
+3. **Fairness:** a shared pure pilot (turn toward a target with lead at the capped rate, fire when
+   lined up, thrust away from the nearest threat) with habits as parameters plays 50 seeded runs
+   each as parker, roamer, sprayer, big-first and random, learning on and off. Medians stay in the
+   band (at least wave 3, so a weak pilot can't pass trivially) and learning moves none by more than
+   `maxShift`. The whole Divide fairness test stays under 60 s, like Swarm's.
+4. **Lessons:** each scripted habit triggers its lesson within 2 waves; respawn and faint time
+   never count; the shared rules (fade, 2 active, Probe block, no persistence) hold for Divide.
+5. **Words:** the banned list gains the drifting game's title and maker.
+6. **Flash limiter** and **PWA** tests cover the new files.
+
+Done means the same as v1: all tests pass, plus a Playwright check by hand at phone and desktop
+sizes that plays fixed seeds of Divide through three waves and sees a lesson card.
+
+### Pull requests
+
+1. This amendment.
+2. Divide core: `divide.js`, drawing, both control schemes, the mode switch, per-mode scores,
+   sounds, the pilot, budget spread evenly (no lessons yet), tests 1, 2, 5, 6, and a learning-off
+   survival check with the pilot so the band is tuned before lessons exist.
+3. Divide learning: the shared lesson engine, `divide-lessons.json`, cards, tests 3 and 4.
+
+The owner can stop after PR 2 and play it before PR 3. (Built: the owner took every default on
+2026-11-09, and the amendment, core and learning went in as one PR. While building, a 14-unit dodge
+over 0.75 s turned out too slow to ever make a shot miss, so the slide is the piece's radius plus 4
+units in 0.15 s.)
+
+### Fable red team (2026-11-09)
+
+13 findings, all folded in:
+
+1. Aim at every split was homing by another name, aimed from point-blank. → Aim acts only at entry;
+   children leave at fixed angles.
+2. Inheritance doesn't make trait points cost the same, and Speed could outrun shots. → Per-size
+   speeds and a cap at 60% of shot speed; the fairness test is the proof.
+3. A weak scripted pilot would die early either way and pass trivially. → Shared pilot delivered
+   in PR 2, band floor at wave 3, step cap, time limit.
+4. Dodge near the ship could land a piece on you; no formation to drift back to. → Offset that
+   resumes the old velocity, path test, never within 40 units.
+5. Respawn could wait forever, and faint time at the center would teach the zone lesson. → 3 s
+   timeout; respawn and faint time excluded from counts.
+6. The wrap lesson was unreadable and its counter pushed players into the zone lesson. → Dropped;
+   replaced by "leaves small pieces" → Speed.
+7. "Aim leads your movement" couldn't be seen. → Cut; one lesson per trait.
+8. Swarm's spray threshold doesn't fit 3 wrapping shots and splitting targets. → Divide sets its
+   own; any piece hit counts; `aimLane` becomes a generic `target`.
+9. A steering stick overloaded one thumb and differed from keys. → Four hold buttons giving the
+   same input as keys; two touches tracked; sizes stated.
+10. 4 shots, rising points, a center-clear respawn and a side-to-side Probe at random height felt
+    like the original. → 3 shots, flat points, a respawn timeout, a diagonal Probe.
+11. "40% of pieces gone" was ambiguous. → Defined over 7N hits.
+12. Builder-facing numbers missing. → Starting numbers table.
+13. Scope is a second v1. → Kept to 3 lessons; the owner can stop after PR 2 and play it first.

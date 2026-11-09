@@ -45,3 +45,18 @@ test('settings are saved, and the system reduced-motion setting counts as Reduce
   assert.equal(new Settings(memoryStorage(), { matches: true }).reduced, true);
   assert.equal(new Settings(memoryStorage(), { matches: false }).reduced, false);
 });
+
+test("each mode keeps its own top 10, and the old table is Swarm's", () => {
+  const storage = memoryStorage();
+  new Scores(storage).add('OLD', 500);
+  new Scores(storage, 'divide').add('DIV', 900);
+  assert.deepEqual(new Scores(storage, 'swarm').list().map((e) => e.name), ['OLD']);
+  assert.deepEqual(new Scores(storage, 'divide').list().map((e) => e.name), ['DIV']);
+});
+
+test('the mode is remembered, and Swarm is the default', () => {
+  const storage = memoryStorage();
+  assert.equal(new Settings(storage, null).mode, 'swarm');
+  new Settings(storage, null).set('mode', 'divide');
+  assert.equal(new Settings(storage, null).mode, 'divide');
+});

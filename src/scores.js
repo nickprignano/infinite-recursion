@@ -1,18 +1,20 @@
-// High scores kept on the player's device: the top 10, best first. Each entry keeps the wave
+// High scores kept on the player's device: the top 10 per mode, best first. Each entry keeps the wave
 // reached, the seed (so a run can be replayed) and whether it was played on Easy.
 import { load, save } from './storage.js';
 
-const KEY = 'infinite-recursion-scores';
+// Swarm keeps the key it had before Divide existed, so earlier scores stay.
+const KEYS = { swarm: 'infinite-recursion-scores', divide: 'infinite-recursion-scores-divide' };
 const MAX_SCORES = 10;
 
 export class Scores {
-  constructor(storage) {
+  constructor(storage, mode = 'swarm') {
     this.storage = storage;
+    this.key = KEYS[mode];
   }
 
   // [{ name, score, wave, seed, easy, date }]
   list() {
-    return load(KEY, [], this.storage);
+    return load(this.key, [], this.storage);
   }
 
   qualifies(score) {
@@ -23,7 +25,7 @@ export class Scores {
   add(name, score, extra = {}) {
     const entry = { name, score, date: new Date().toISOString().slice(0, 10), ...extra };
     const list = [...this.list(), entry].sort((a, b) => b.score - a.score).slice(0, MAX_SCORES);
-    save(KEY, list, this.storage);
+    save(this.key, list, this.storage);
     return list;
   }
 }

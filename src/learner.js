@@ -3,6 +3,9 @@
 // cleared, the strongest habits past their thresholds in data/lessons.json become lessons that
 // tilt where the next wave's trait budget goes. Pure functions over the game state.
 //
+// The lesson engine is shared by both modes: each mode counts its own habits and passes its stats
+// to endWave. A stat's detail may carry a `target` (Swarm: a lane, Divide: a zone) that Aim reads.
+//
 // Rules: strength = how far past its threshold the stat went. At most two lessons are active; a new
 // one replaces the weaker. A lesson fades after two waves unless the habit repeats. Hitting the
 // Probe means nothing new is learned that wave. Nothing carries over between runs.
@@ -13,7 +16,7 @@ export const FADE_AFTER = 2;
 const LANE_NAMES = ['far left lane', 'left lane', 'middle lane', 'right lane', 'far right lane'];
 
 export function newLearner() {
-  return { lessons: [], history: [], wave: null, aimLane: null };
+  return { lessons: [], history: [], wave: null, target: null };
 }
 
 export function startWaveStats(state) {
@@ -58,7 +61,7 @@ export function waveStats(state) {
   const firstHalf = w.killCols.slice(0, Math.ceil(state.swarm.total / 2));
   const edges = firstHalf.filter((c) => c <= 1 || c >= cols - 2).length;
   return {
-    laneShare: { value: w.lanes[lane] / steps, pct: Math.round((100 * w.lanes[lane]) / steps), lane: LANE_NAMES[lane], laneIndex: lane },
+    laneShare: { value: w.lanes[lane] / steps, pct: Math.round((100 * w.lanes[lane]) / steps), lane: LANE_NAMES[lane], target: lane },
     missRate: {
       value: w.shots >= state.config.minShotsForSpray ? 1 - w.kills / w.shots : 0,
       missed: w.shots - w.kills,
@@ -73,10 +76,10 @@ function fill(text, detail) {
   return text.replace(/\{(\w+)\}/g, (_, key) => String(detail[key]));
 }
 
-// Ends the wave: ages old lessons, learns new ones. Returns what the card shows.
-export function endWave(state) {
+// Ends the wave: ages old lessons, learns new ones. Returns what the card shows. `stats` are the
+// mode's habit numbers for the wave just played.
+export function endWave(state, stats = waveStats(state)) {
   const learn = state.learn;
-  const stats = waveStats(state);
   const blocked = state.probeHit;
   const triggered = blocked
     ? []
@@ -109,8 +112,8 @@ export function endWave(state) {
     learn.history.push(t.lesson.id);
     learned.push({ id: t.lesson.id, text: fill(t.lesson.text, t.detail), counter: t.lesson.counter });
   }
-  const camp = learn.lessons.find((l) => l.id === 'camp');
-  learn.aimLane = camp ? camp.detail.laneIndex : null;
+  const aimed = learn.lessons.find((l) => l.detail.target != null);
+  learn.target = aimed ? aimed.detail.target : null;
   return { learned, repeated, faded, blocked, active: learn.lessons.map((l) => lessonById(state, l.id).name) };
 }
 

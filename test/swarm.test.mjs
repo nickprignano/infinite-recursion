@@ -55,7 +55,7 @@ test('whatever the swarm has learned, each wave\'s trait total is its budget', (
     state.learn.lessons = lessons
       .filter(() => r() < 0.5)
       .slice(0, 2)
-      .map((l) => ({ id: l.id, strength: r(), age: 0, detail: { laneIndex: Math.floor(r() * 5) } }));
+      .map((l) => ({ id: l.id, strength: r(), age: 0, detail: { target: Math.floor(r() * 5) } }));
     const wave = 1 + Math.floor(r() * 20);
     startWave(state, wave);
     assert.equal(traitTotal(state.invaders), budgetFor(waves, wave, state.invaders.length));

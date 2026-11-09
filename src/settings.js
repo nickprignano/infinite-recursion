@@ -1,4 +1,4 @@
-// The player's settings: Easy and Reduce effects. Effects are reduced when the switch is on or the
+// The player's settings: the mode (Swarm or Divide), Easy and Reduce effects. Effects are reduced when the switch is on or the
 // system asks for reduced motion, watched live so a change mid-game applies at once.
 import { load, save } from './storage.js';
 
@@ -11,6 +11,7 @@ export class Settings {
     const saved = load(KEY, {}, storage);
     this.reduceSwitch = saved.reduceSwitch === true;
     this.easy = saved.easy === true;
+    this.mode = saved.mode === 'divide' ? 'divide' : 'swarm';
   }
 
   get reduced() {
@@ -19,6 +20,6 @@ export class Settings {
 
   set(name, value) {
     this[name] = value;
-    save(KEY, { reduceSwitch: this.reduceSwitch, easy: this.easy }, this.storage);
+    save(KEY, { reduceSwitch: this.reduceSwitch, easy: this.easy, mode: this.mode }, this.storage);
   }
 }
