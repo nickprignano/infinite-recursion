@@ -1,0 +1,25 @@
+{
+  "field": { "width": 300, "height": 400 },
+  "grids": [[4, 9], [4, 9], [4, 10], [5, 10], [5, 10], [6, 10]],
+  "rowPoints": [50, 40, 30, 20, 10, 10],
+  "invader": { "width": 16, "height": 12 },
+  "swarm": {
+    "spacingX": 24,
+    "spacingY": 22,
+    "startY": 60,
+    "startYPerWave": 8,
+    "startYMax": 100,
+    "stepDown": 8,
+    "edgeMargin": 6,
+    "speed": 16,
+    "speedPerWave": 0.08,
+    "thinBoost": 3
+  },
+  "invaderShots": { "speed": 130, "perSecond": 0.9, "perSecondPerWave": 0.12, "max": 3 },
+  "cannon": { "y": 376, "width": 20, "height": 10, "speed": 170, "followSpeed": 280, "lives": 3, "maxLives": 6, "extraLifeEvery": 3, "respawn": 1.2 },
+  "playerShots": { "speed": 380, "cooldown": 0.3, "secondShotWave": 4 },
+  "barriers": { "count": 3, "y": 318, "cell": 4 },
+  "probe": { "at": 0.4, "y": 34, "width": 22, "height": 10, "speed": 70, "bonus": 300 },
+  "waveBonus": 100,
+  "easy": 0.75
+}
