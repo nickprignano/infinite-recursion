@@ -1,7 +1,7 @@
 [
   {
     "id": "zone",
-    "name": "Watches your corner",
+    "name": "Watches where you park",
     "stat": "zoneShare",
     "threshold": 0.45,
     "trait": "aim",
