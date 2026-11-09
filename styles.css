@@ -1,0 +1,129 @@
+/* Fallback copies of prignano-theme's color tokens, used if the shared theme can't load. The
+   canvas reads these same variables, so the game follows the site's light and dark mode. */
+:root {
+  --bg: #f6f7f9;
+  --fg: #111418;
+  --muted: #5f6873;
+  --card: #ffffff;
+  --border: #e3e6ea;
+  --accent: #2563d6;
+  --active: #17804a;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --card: #151b23; --border: #2a313c; --accent: #58a6ff; --active: #3fb950;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --card: #151b23; --border: #2a313c; --accent: #58a6ff; --active: #3fb950;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body { display: flex; flex-direction: column; height: 100dvh; }
+#site-header { flex-shrink: 0; }
+#site-header.collapsed { display: none; }
+#app { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--border);
+}
+.hud { flex: 1; display: flex; gap: 14px; font-size: 0.9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hud b { color: var(--fg); font-weight: 600; }
+.bar button {
+  min-width: 44px;
+  min-height: 44px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.bar button:hover, .bar button:focus-visible { border-color: var(--accent); outline: none; }
+
+#stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 6px; }
+#frame { position: relative; }
+#field { display: block; width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 6px; touch-action: none; }
+
+#strip {
+  flex-shrink: 0;
+  align-self: center;
+  height: clamp(64px, 13vh, 110px);
+  margin-bottom: max(8px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: crosshair;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  text-align: center;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  border-radius: 6px;
+  overflow-y: auto;
+}
+.screen h1 { margin: 0; font-size: clamp(1.5rem, 6vw, 2.2rem); letter-spacing: 0.02em; }
+.screen h2 { margin: 0; font-size: 1.3rem; }
+.screen p { margin: 0; max-width: 32ch; line-height: 1.45; }
+.tagline, .hint { color: var(--muted); }
+.buttons { display: flex; flex-direction: column; gap: 8px; min-width: 180px; }
+.screen button, .screen input {
+  font: inherit;
+  min-height: 44px;
+  padding: 8px 16px;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.screen button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+.screen button:focus-visible, .screen input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switches { display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--muted); }
+.switches input { min-height: 0; width: 18px; height: 18px; vertical-align: -3px; accent-color: var(--accent); }
+#name-form { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#name-input { width: 5ch; text-align: center; text-transform: uppercase; letter-spacing: 0.2em; cursor: text; }
+.scores { margin: 0; padding: 0 0 0 2.2em; text-align: left; font-variant-numeric: tabular-nums; min-width: 14em; }
+.scores li { padding: 1px 0; }
+.scores .easy { color: var(--muted); font-size: 0.8em; }
+.countdown { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 700; pointer-events: none; }
+
+.mouse-only { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .touch-only { display: none; }
+  .mouse-only { display: inline; }
+}
+
+[hidden] { display: none !important; }
