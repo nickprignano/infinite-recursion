@@ -339,7 +339,7 @@ something:
 | --- | --- |
 | Aim | When the node **enters** (only then), its heading turns a third of the way per level toward its target: your ship, or the zone a lesson names. Entry is at least the spawn distance away, so you see it coming |
 | Speed | Moves 20% faster. No piece ever moves faster than 60% of your shot speed |
-| Dodge | A chance (20/40/60%, 1.5 s cooldown) to slide sideways when a shot's path would hit it: a 14-unit offset over 0.75 s, then its old velocity resumes. Never while your ship is within 40 units, so a dodge can't land on you |
+| Dodge | A chance (20/40/60%, 1.5 s cooldown) to slide sideways when a shot's path would hit it: its own radius plus 4 units in 0.15 s, then its old velocity resumes. Never when the slide could bring it within 40 units of your ship, so a dodge can't land on you |
 
 The budget per wave is listed in `divide.json`, the same every run, and spread over the large nodes
 by the existing `spreadBudget` (largest remainder, so the total always matches). Lessons change only
@@ -385,6 +385,8 @@ One lesson per trait, so the card always matches what you see: pointed ticks, tr
 | Piece speed large/medium/small | 30, 45, 60 u/s, +5% a wave, cap 180 u/s |
 | Split angle | 35° either side of the parent's heading |
 | Spawn distance, safe radius, faint time, respawn timeout | 120, 60, 1.5 s, 3 s |
+| Dodge: look-ahead, slide, ship clearance | 70 units, radius + 4 in 0.15 s, 40 units |
+| Spray lesson: shots needed before it can count | 15 |
 | Points per piece, wave bonus, Probe bonus, outsmarted bonus | 20, 100 × wave, 300, 250 |
 | Probe: radius, speed | 10, 50 u/s |
 | Budgets | 2, 5, 8, 11, 14, 17, then +3 a wave, at most 9 × N |
@@ -449,7 +451,10 @@ sizes that plays fixed seeds of Divide through three waves and sees a lesson car
    survival check with the pilot so the band is tuned before lessons exist.
 3. Divide learning: the shared lesson engine, `divide-lessons.json`, cards, tests 3 and 4.
 
-The owner can stop after PR 2 and play it before PR 3.
+The owner can stop after PR 2 and play it before PR 3. (Built: the owner took every default on
+2026-11-09, and the amendment, core and learning went in as one PR. While building, a 14-unit dodge
+over 0.75 s turned out too slow to ever make a shot miss, so the slide is the piece's radius plus 4
+units in 0.15 s.)
 
 ### Fable red team (2026-11-09)
 

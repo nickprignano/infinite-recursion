@@ -1,0 +1,35 @@
+[
+  {
+    "id": "zone",
+    "name": "Watches your corner",
+    "stat": "zoneShare",
+    "threshold": 0.45,
+    "trait": "aim",
+    "columns": "all",
+    "weight": 4,
+    "text": "You spent {pct}% of the wave in the {zone}. Next wave comes in aimed there.",
+    "counter": "Keep moving."
+  },
+  {
+    "id": "spray",
+    "name": "Slides out of sprays",
+    "stat": "missRate",
+    "threshold": 0.72,
+    "trait": "dodge",
+    "columns": "all",
+    "weight": 3,
+    "text": "{missed} of your {shots} shots missed. Next wave slides out of the way more.",
+    "counter": "Fewer, surer shots."
+  },
+  {
+    "id": "clutter",
+    "name": "Speeds up the leftovers",
+    "stat": "smallLeft",
+    "threshold": 0.5,
+    "trait": "speed",
+    "columns": "all",
+    "weight": 3,
+    "text": "{count} small pieces were still flying when the Probe came. Next wave moves faster.",
+    "counter": "Clean up as you go."
+  }
+]

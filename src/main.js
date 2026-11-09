@@ -17,14 +17,14 @@ const CARD_MIN_MS = 1500;
 const MAX_CATCH_UP = 5;
 
 const $ = (id) => document.getElementById(id);
-const [waves, lessons, divideConfig] = await Promise.all(
-  ['data/waves.json', 'data/lessons.json', 'data/divide.json'].map(async (url) => (await fetch(url)).json()),
+const [waves, lessons, divideConfig, divideLessons] = await Promise.all(
+  ['data/waves.json', 'data/lessons.json', 'data/divide.json', 'data/divide-lessons.json'].map(async (url) => (await fetch(url)).json()),
 );
 const config = { ...waves, lessons };
-// Each mode: its numbers, its game module, and whether it learns yet.
+// Each mode: its numbers and lessons, its game module, and its own scores.
 const MODES = {
-  swarm: { config, game: swarm, learns: true, scores: new Scores(undefined, 'swarm') },
-  divide: { config: divideConfig, game: divide, learns: false, scores: new Scores(undefined, 'divide') },
+  swarm: { config, game: swarm, scores: new Scores(undefined, 'swarm') },
+  divide: { config: { ...divideConfig, lessons: divideLessons }, game: divide, scores: new Scores(undefined, 'divide') },
 };
 const settings = new Settings();
 const renderer = new Renderer($('field'));
@@ -142,7 +142,7 @@ function hud() {
 function waveCleared(events) {
   const cleared = events.find((e) => e.type === 'cleared');
   const extra = events.some((e) => e.type === 'extra-life');
-  const report = cleared.report ?? { learned: [], repeated: [], faded: [], blocked: false };
+  const { report } = cleared;
   const lines = [];
   const add = (text, cls) => {
     const p = document.createElement('p');
@@ -155,8 +155,8 @@ function waveCleared(events) {
     add(l.text);
     add(l.counter, 'counter');
   }
-  for (const id of report.repeated) add(`You did it again, so it keeps this one: ${config.lessons.find((l) => l.id === id).name}.`);
-  if (!report.learned.length && !report.repeated.length && !report.blocked && mode.learns) add('The swarm learned nothing about you this wave.');
+  for (const id of report.repeated) add(`You did it again, so it keeps this one: ${mode.config.lessons.find((l) => l.id === id).name}.`);
+  if (!report.learned.length && !report.repeated.length && !report.blocked) add('The swarm learned nothing about you this wave.');
   if (report.faded.length) add(`It forgot: ${report.faded.join(', ')}.`, 'quiet');
   add(`Bonus ${cleared.bonus}${cleared.outsmarted ? `, outsmarted ${cleared.outsmarted}` : ''}.${extra ? ' Extra life.' : ''}`, 'quiet');
   $('card-title').textContent = `Wave ${game.wave} cleared`;
@@ -185,9 +185,10 @@ addEventListener('pointerdown', () => nextWave());
 function gameOver() {
   const landed = game.endReason === 'landed';
   $('over-title').textContent = landed ? 'The swarm landed' : 'Out of lives';
-  const model = mode.learns ? finalModel(game) : [];
-  const learned = model.length ? ` The swarm learned: ${model.join(', ')}.` : mode.learns ? ' The swarm learned nothing about you.' : '';
-  $('over-text').textContent = `Score ${game.score}, wave ${game.wave}.${learned}`;
+  const model = finalModel(game);
+  $('over-text').textContent = `Score ${game.score}, wave ${game.wave}. ${
+    model.length ? `The swarm learned: ${model.join(', ')}.` : 'The swarm learned nothing about you.'
+  }`;
   audio.play('over');
   const { scores } = mode;
   const qualifies = scores.qualifies(game.score);

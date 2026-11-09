@@ -80,7 +80,7 @@ export function pilot(habit = {}) {
 export const PILOTS = {
   parker: pilot({ park: true }),
   roamer: pilot({ roam: true }),
-  sprayer: pilot({ spray: true }),
+  sprayer: pilot({ spray: true, jitter: 1.6 }),
   bigFirst: pilot({ bigFirst: true }),
   random: pilot({ random: true }),
 };

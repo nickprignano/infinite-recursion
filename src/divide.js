@@ -2,6 +2,8 @@
 // and nodes that split into smaller copies of themselves when hit. Pure functions over a plain
 // state object, with no DOM, so Node tests can play it. Numbers come from data/divide.json.
 // Coordinates are playfield units (300 by 400), y pointing down; an angle of 0 points up.
+// config is data/divide.json with data/divide-lessons.json under `lessons`.
+import { endWave, newLearner, weightOf } from './learner.js';
 import { random } from './rng.js';
 import { assignTraits, budgetFor } from './swarm.js';
 
@@ -28,6 +30,7 @@ export function createGame(config, { seed = 1, easy = false } = {}) {
     wavesCleared: 0,
     phase: 'play', // 'play' | 'cleared' | 'over'
     endReason: null, // 'lives'
+    learn: newLearner(),
   };
   startWave(state, 1);
   return state;
@@ -74,9 +77,10 @@ export function startWave(state, wave) {
   state.total = count * PIECES_PER_NODE;
   state.pieces = [];
   for (let i = 0; i < count; i++) state.pieces.push(enterNode(state));
-  // Traits come from the fixed budget. Spread evenly until Divide learns.
-  assignTraits(state.pieces, budgetFor(c, wave, count), () => 1, TRAITS);
+  // The learning: this wave's traits come from the fixed budget, spread by the active lessons.
+  assignTraits(state.pieces, budgetFor(c, wave, count), weightOf(state), TRAITS);
   for (const p of state.pieces) aimAtEntry(state, p);
+  state.learn.wave = { steps: 0, zones: new Array(9).fill(0), shots: 0, hits: 0, smallAtProbe: null };
 }
 
 function newShip(c, faint) {
@@ -114,9 +118,53 @@ function aimAtEntry(state, p) {
   p.heading += (diff * level) / 3;
 }
 
-// What Aim points at: the ship. (Divide's lessons will name a zone instead.)
+// What Aim points at: the zone a lesson names, or else the ship.
 function aimTarget(state) {
-  return state.ship;
+  const zone = state.learn.target;
+  if (zone == null) return state.ship;
+  const { width, height } = state.config.field;
+  return { x: ((zone % 3) + 0.5) * (width / 3), y: (Math.floor(zone / 3) + 0.5) * (height / 3) };
+}
+
+// The field as a 3 by 3 grid, numbered row by row from the top left.
+export function zoneOf(state, o) {
+  const { width, height } = state.config.field;
+  const col = Math.min(2, Math.floor((o.x / width) * 3));
+  const row = Math.min(2, Math.floor((o.y / height) * 3));
+  return row * 3 + col;
+}
+
+const ZONE_NAMES = ['top left corner', 'top middle', 'top right corner', 'left side', 'middle', 'right side', 'bottom left corner', 'bottom middle', 'bottom right corner'];
+
+// Divide's habits, counted each step. Time while the ship is gone or faint never counts.
+function observe(state, events) {
+  const w = state.learn.wave;
+  const ship = state.ship;
+  if (ship.alive && ship.faint === 0) {
+    w.steps += 1;
+    w.zones[zoneOf(state, ship)] += 1;
+  }
+  for (const e of events) {
+    if (e.type === 'fire') w.shots += 1;
+    else if (e.type === 'kill' || e.type === 'split') w.hits += 1;
+  }
+}
+
+// The three habit numbers for the wave just played, with the details the cards quote.
+export function waveStats(state) {
+  const w = state.learn.wave;
+  const steps = Math.max(1, w.steps);
+  const zone = w.zones.indexOf(Math.max(...w.zones));
+  const smalls = (state.total / PIECES_PER_NODE) * 4;
+  return {
+    zoneShare: { value: w.zones[zone] / steps, pct: Math.round((100 * w.zones[zone]) / steps), zone: ZONE_NAMES[zone], target: zone },
+    missRate: {
+      value: w.shots >= state.config.minShotsForSpray ? 1 - w.hits / w.shots : 0,
+      missed: w.shots - w.hits,
+      shots: w.shots,
+    },
+    smallLeft: { value: (w.smallAtProbe ?? 0) / smalls, count: w.smallAtProbe ?? 0 },
+  };
 }
 
 export function pieceSpeed(state, p) {
@@ -145,14 +193,18 @@ export function step(state, input = {}) {
   moveShots(state, events);
   collide(state, events);
   if (state.phase !== 'play') return events;
+  observe(state, events);
 
   if (state.hits >= state.total) {
     const c = state.config;
     state.phase = 'cleared';
     state.wavesCleared += 1;
     const bonus = c.waveBonus * state.wave;
-    state.score += bonus;
-    events.push({ type: 'cleared', bonus, outsmarted: 0, report: null });
+    const report = endWave(state, waveStats(state));
+    // Outsmarted: the swarm learned nothing from this wave, new or repeated.
+    const outsmarted = report.learned.length === 0 && report.repeated.length === 0 ? c.outsmartedBonus : 0;
+    state.score += bonus + outsmarted;
+    events.push({ type: 'cleared', bonus, outsmarted, report });
     if (state.wavesCleared % c.ship.extraLifeEvery === 0 && state.lives < c.ship.maxLives) {
       state.lives += 1;
       events.push({ type: 'extra-life' });
@@ -269,6 +321,7 @@ function moveProbe(state) {
   const { width, height } = c.field;
   if (!state.probeSpawned && state.hits >= Math.ceil(p.at * state.total)) {
     state.probeSpawned = true;
+    state.learn.wave.smallAtProbe = state.pieces.filter((q) => q.size === SMALL).length;
     const fromLeft = random(state) < 0.5;
     const fromTop = random(state) < 0.5;
     const x = fromLeft ? -p.radius : width + p.radius;

@@ -7,7 +7,7 @@ import { createGame, LARGE, nodesFor, PIECES_PER_NODE, pieceSpeed, SMALL, startW
 import { budgetFor, MAX_LEVEL } from '../src/swarm.js';
 import { flyRun, PILOTS } from './pilot.mjs';
 
-const config = JSON.parse(readFileSync('data/divide.json', 'utf8'));
+const config = { ...JSON.parse(readFileSync('data/divide.json', 'utf8')), lessons: JSON.parse(readFileSync('data/divide-lessons.json', 'utf8')) };
 const strip = (s) => ({ ...s, config: undefined });
 const traitSum = (pieces) => pieces.reduce((s, p) => s + TRAITS.reduce((t, name) => t + p.traits[name], 0), 0);
 
@@ -193,7 +193,7 @@ test('with learning off, every scripted pilot survives into the fairness band', 
   for (const [name, player] of Object.entries(PILOTS)) {
     const reached = [];
     for (let seed = 1; seed <= 20; seed++) {
-      const { state } = flyRun(config, player, seed, { maxWave, maxSteps });
+      const { state } = flyRun({ ...config, lessons: [] }, player, seed, { maxWave, maxSteps });
       reached.push(state.phase === 'over' ? state.wave : state.wave + 1);
     }
     reached.sort((a, b) => a - b);

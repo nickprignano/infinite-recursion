@@ -48,7 +48,7 @@ test('the camp lesson names your lane and sends the aim there', () => {
   const state = createGame(config, { seed: 1 });
   habit(state, HABITS.camp);
   assert.match(endWave(state).learned[0].text, /left lane/);
-  assert.equal(state.learn.aimLane, 1);
+  assert.equal(state.learn.target, 1);
 });
 
 test('a lesson fades after two waves unless the habit repeats', () => {

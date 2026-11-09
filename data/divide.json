@@ -36,6 +36,7 @@
   "points": 20,
   "waveBonus": 100,
   "outsmartedBonus": 250,
+  "minShotsForSpray": 15,
   "easy": 0.75,
   "budgets": [2, 5, 8, 11, 14, 17],
   "budgetGrowth": 3,

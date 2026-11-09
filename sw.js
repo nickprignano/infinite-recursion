@@ -1,8 +1,9 @@
 // Service worker: keeps a copy of every game file so the installed app plays offline.
 // VERSION and FILES are written by `node tools/sw-version.mjs`; a test fails if they're stale.
 
-const VERSION = '0d800203743f';
+const VERSION = '87a7b134834e';
 const FILES = [
+  'data/divide-lessons.json',
   'data/divide.json',
   'data/lessons.json',
   'data/waves.json',
