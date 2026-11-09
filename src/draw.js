@@ -44,6 +44,20 @@ const SHAPES = [
   },
 ];
 
+// Each trait adds a visible part, bigger per level, so the swarm can be read at a glance.
+function traitParts(ctx, traits) {
+  if (traits.aim) {
+    const top = -7.5 - traits.aim * 1.5;
+    line(ctx, 0, -6.5, 0, top);
+    dot(ctx, 0, top, 1.1);
+  }
+  for (let i = 0; i < traits.fire; i++) line(ctx, -2 + i * 2, 5.5, -2 + i * 2, 8.5);
+  if (traits.dodge) {
+    const reach = 8 + traits.dodge * 1.6;
+    for (const side of [-1, 1]) poly(ctx, [[side * 8, -2.5], [side * reach, -4.5], [side * 8, 1]]);
+  }
+}
+
 function poly(ctx, points) {
   ctx.beginPath();
   points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
@@ -133,7 +147,10 @@ export class Renderer {
       const { x, y } = invaderPos(state, inv);
       ctx.save();
       ctx.translate(x, y);
-      this.glowStroke(() => SHAPES[inv.row % SHAPES.length](ctx, frame), rowColors[inv.row % rowColors.length], 1.2, reduced);
+      this.glowStroke(() => {
+        SHAPES[inv.row % SHAPES.length](ctx, frame);
+        traitParts(ctx, inv.traits);
+      }, rowColors[inv.row % rowColors.length], 1.2, reduced);
       ctx.restore();
     }
 

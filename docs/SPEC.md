@@ -106,7 +106,7 @@ carries over between runs.
 ### Scoring
 
 Flat points per row (higher rows worth more), wave-clear bonus, Probe bonus, and an "outsmarted"
-bonus for clearing a wave without triggering a new lesson. The extra-life rule is per wave, so it
+bonus for clearing a wave without teaching the swarm anything (no new lesson and no repeated one). The extra-life rule is per wave, so it
 doesn't depend on tuned scores.
 
 ### Easy
@@ -207,8 +207,10 @@ nothing on the account without his yes.
    appears at 40% cleared.
 2. **Budget:** `swarm.spreadBudget` over 10,000 random inputs always sums to the budget with every
    trait in 0 to 3; every budget in `waves.json` is a whole number no bigger than 9 × invaders.
-3. **Fairness:** 50 seeded full runs each for scripted camper, sprayer, edge-picker, hider and
-   random players (fast, headless). Median waves survived stay within a band set in `waves.json`.
+3. **Fairness:** 50 seeded full runs each for scripted chaser, camper, sprayer, edge-picker,
+   hider and random players (fast, headless), with the learning on and off. Median waves survived
+   stay within a band set in `waves.json`, and the learning moves no player's median by more than
+   `maxShift` waves.
 4. **Lessons:** each scripted habit triggers its lesson within 2 waves; lessons fade after 2 waves
    without the habit; at most 2 active, a third replaces the weaker; hitting the Probe blocks a new
    lesson; nothing persists between runs.

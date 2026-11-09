@@ -98,6 +98,10 @@ body { display: flex; flex-direction: column; height: 100dvh; }
 .screen h2 { margin: 0; font-size: 1.3rem; }
 .screen p { margin: 0; max-width: 32ch; line-height: 1.45; }
 .tagline, .hint { color: var(--muted); }
+.card-lines { display: flex; flex-direction: column; gap: 8px; max-width: 34ch; }
+.card-lines p { margin: 0; }
+.card-lines .counter { color: var(--accent); font-weight: 600; }
+.card-lines .quiet { color: var(--muted); font-size: 0.9em; }
 .buttons { display: flex; flex-direction: column; gap: 8px; min-width: 180px; }
 .screen button, .screen input {
   font: inherit;

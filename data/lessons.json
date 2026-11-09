@@ -1,0 +1,46 @@
+[
+  {
+    "id": "camp",
+    "name": "Watches your lane",
+    "stat": "laneShare",
+    "threshold": 0.45,
+    "trait": "aim",
+    "columns": "all",
+    "weight": 4,
+    "text": "You spent {pct}% of the wave in the {lane}. Next wave aims there.",
+    "counter": "Move more."
+  },
+  {
+    "id": "spray",
+    "name": "Dodges sprays",
+    "stat": "missRate",
+    "threshold": 0.75,
+    "trait": "dodge",
+    "columns": "all",
+    "weight": 3,
+    "text": "{missed} of your {shots} shots missed. Next wave dodges more.",
+    "counter": "Fewer, surer shots."
+  },
+  {
+    "id": "edges",
+    "name": "Guards its edges",
+    "stat": "edgeShare",
+    "threshold": 0.6,
+    "trait": "dodge",
+    "columns": "edges",
+    "weight": 6,
+    "text": "{pct}% of your first hits were on the edge columns. The edges dodge now.",
+    "counter": "Start from the middle."
+  },
+  {
+    "id": "hide",
+    "name": "Fires on cover",
+    "stat": "hideShare",
+    "threshold": 0.5,
+    "trait": "fire",
+    "columns": "barriers",
+    "weight": 6,
+    "text": "You spent {pct}% of the wave under a barrier. The columns above them fire more.",
+    "counter": "Fight in the open."
+  }
+]
