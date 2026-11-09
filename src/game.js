@@ -1,7 +1,10 @@
 // The game itself: waves, movement, shots, barriers, the Probe and scoring. Pure functions over a
 // plain state object, with no DOM, so Node tests can play it. Numbers come from data/waves.json.
 // Coordinates are playfield units (300 by 400), y pointing down; positions are centers.
+// config is data/waves.json with data/lessons.json under `lessons`.
+import { endWave, newLearner, observe, startWaveStats, weightOf } from './learner.js';
 import { random } from './rng.js';
+import { assignTraits, budgetFor } from './swarm.js';
 
 export const STEP = 1 / 60;
 
@@ -30,6 +33,7 @@ export function createGame(config, { seed = 1, easy = false } = {}) {
     wavesCleared: 0,
     phase: 'play', // 'play' | 'cleared' | 'over'
     endReason: null, // 'lives' | 'landed'
+    learn: newLearner(),
   };
   startWave(state, 1);
   return state;
@@ -51,15 +55,20 @@ export function startWave(state, wave) {
   };
   state.invaders = [];
   for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) state.invaders.push({ row, col, alive: true });
+    for (let col = 0; col < cols; col++) {
+      state.invaders.push({ row, col, alive: true, dx: 0, dodgeTo: 0, dodgeUntil: 0, dodgeReady: 0 });
+    }
   }
-  state.cannon = { x: c.field.width / 2, cooldown: 0, respawn: 0 };
+  state.cannon = { x: c.field.width / 2, vx: 0, cooldown: 0, respawn: 0 };
   state.shots = [];
   state.enemyShots = [];
   state.barriers = makeBarriers(c);
   state.probe = null;
   state.probeSpawned = false;
   state.probeHit = false;
+  // The learning: this wave's traits come from the fixed budget, spread by the active lessons.
+  assignTraits(state.invaders, budgetFor(c, wave, state.invaders.length), weightOf(state));
+  startWaveStats(state);
 }
 
 function makeBarriers(c) {
@@ -83,7 +92,7 @@ function makeBarriers(c) {
 
 export function invaderPos(state, inv) {
   const s = state.config.swarm;
-  return { x: state.swarm.ox + inv.col * s.spacingX, y: state.swarm.oy + inv.row * s.spacingY };
+  return { x: state.swarm.ox + inv.col * s.spacingX + inv.dx, y: state.swarm.oy + inv.row * s.spacingY };
 }
 
 export function aliveCount(state) {
@@ -113,20 +122,25 @@ export function step(state, input = {}) {
   }
 
   moveCannon(state, input);
-  fire(state, input);
+  fire(state, input, events);
   moveSwarm(state, events);
   if (state.phase !== 'play') return events;
+  dodge(state);
   enemyFire(state);
   moveProbe(state);
   moveShots(state, events);
   if (state.phase !== 'play') return events;
+  observe(state, events);
 
   if (aliveCount(state) === 0) {
     state.phase = 'cleared';
     state.wavesCleared += 1;
     const bonus = c.waveBonus * state.wave;
-    state.score += bonus;
-    events.push({ type: 'cleared', bonus });
+    const report = endWave(state);
+    // Outsmarted: the swarm learned nothing from this wave, new or repeated.
+    const outsmarted = report.learned.length === 0 && report.repeated.length === 0 ? c.outsmartedBonus : 0;
+    state.score += bonus + outsmarted;
+    events.push({ type: 'cleared', bonus, outsmarted, report });
     if (state.wavesCleared % c.cannon.extraLifeEvery === 0 && state.lives < c.cannon.maxLives) {
       state.lives += 1;
       events.push({ type: 'extra-life' });
@@ -138,6 +152,7 @@ export function step(state, input = {}) {
 function moveCannon(state, input) {
   const c = state.config;
   const cannon = state.cannon;
+  const before = cannon.x;
   if (input.moveTo != null) {
     const max = c.cannon.followSpeed * STEP;
     cannon.x += Math.max(-max, Math.min(max, input.moveTo - cannon.x));
@@ -146,9 +161,10 @@ function moveCannon(state, input) {
   }
   const half = c.cannon.width / 2 + 2;
   cannon.x = Math.max(half, Math.min(c.field.width - half, cannon.x));
+  cannon.vx = (cannon.x - before) / STEP;
 }
 
-function fire(state, input) {
+function fire(state, input, events) {
   const c = state.config;
   const cannon = state.cannon;
   cannon.cooldown = Math.max(0, cannon.cooldown - STEP);
@@ -156,6 +172,7 @@ function fire(state, input) {
   if (input.fire && cannon.cooldown === 0 && state.shots.length < max) {
     state.shots.push({ x: cannon.x, y: c.cannon.y - c.cannon.height });
     cannon.cooldown = c.playerShots.cooldown;
+    events.push({ type: 'fire' });
   }
 }
 
@@ -219,16 +236,64 @@ export function shooters(state) {
   return [...lowest.values()].sort((a, b) => a.col - b.col);
 }
 
+// Fire: each level makes that invader likelier to be the one shooting and the swarm shoot more
+// often. Aim: each level leads your movement more and bends the shot toward you (and toward the
+// lane a lesson names).
 function enemyFire(state) {
-  const c = state.config.invaderShots;
-  const easy = state.easy ? state.config.easy : 1;
-  const rate = c.perSecond * (1 + c.perSecondPerWave * (state.wave - 1)) * easy;
-  if (state.enemyShots.length >= c.max || random(state) >= rate * STEP) return;
+  const cfg = state.config;
+  const c = cfg.invaderShots;
   const can = shooters(state);
-  if (can.length === 0) return;
-  const inv = can[Math.floor(random(state) * can.length)];
+  if (can.length === 0 || state.enemyShots.length >= c.max) return;
+  const easy = state.easy ? cfg.easy : 1;
+  const weights = can.map((inv) => 1 + cfg.traits.fire.perLevel * inv.traits.fire);
+  const total = weights.reduce((a, b) => a + b, 0);
+  const rate = c.perSecond * (1 + c.perSecondPerWave * (state.wave - 1)) * easy * (total / can.length);
+  if (random(state) >= rate * STEP) return;
+  let pick = random(state) * total;
+  let k = 0;
+  while (pick >= weights[k] && k < can.length - 1) pick -= weights[k++];
+  const inv = can[k];
   const { x, y } = invaderPos(state, inv);
-  state.enemyShots.push({ x, y: y + state.config.invader.height / 2, vx: 0 });
+  const y0 = y + cfg.invader.height / 2;
+  let vx = 0;
+  const aim = inv.traits.aim / 3;
+  if (aim > 0) {
+    const flight = (cfg.cannon.y - y0) / c.speed;
+    let target = state.cannon.x + state.cannon.vx * flight * aim;
+    if (state.learn.aimLane != null) {
+      const laneX = ((state.learn.aimLane + 0.5) / 5) * cfg.field.width;
+      target += (laneX - target) * cfg.traits.aim.laneBlend * aim;
+    }
+    const max = cfg.traits.aim.maxVx * aim;
+    vx = Math.max(-max, Math.min(max, ((target - x) / flight) * aim));
+  }
+  state.enemyShots.push({ x, y: y0, vx });
+}
+
+// Dodge: an invader with a shot heading for it may sidestep (chance by level, then a cooldown),
+// and drifts back into formation afterwards.
+function dodge(state) {
+  const cfg = state.config;
+  const d = cfg.traits.dodge;
+  const halfW = cfg.invader.width / 2;
+  for (const inv of state.invaders) {
+    if (!inv.alive) continue;
+    if (inv.traits.dodge > 0 && state.time >= inv.dodgeReady) {
+      const { x, y } = invaderPos(state, inv);
+      const shot = state.shots.find((s) => s.y > y && s.y - y < d.range && Math.abs(s.x - x) < halfW + 2);
+      if (shot) {
+        inv.dodgeReady = state.time + d.cooldown;
+        if (random(state) < d.chance[inv.traits.dodge]) {
+          const away = shot.x === x ? (random(state) < 0.5 ? -1 : 1) : Math.sign(x - shot.x);
+          inv.dodgeTo = away * d.step;
+          inv.dodgeUntil = state.time + d.cooldown / 2;
+        }
+      }
+    }
+    const goal = state.time < inv.dodgeUntil ? inv.dodgeTo : 0;
+    const move = d.speed * STEP;
+    inv.dx += Math.max(-move, Math.min(move, goal - inv.dx));
+  }
 }
 
 function moveProbe(state) {

@@ -3,6 +3,7 @@ import { Renderer } from './draw.js';
 import { Effects } from './effects.js';
 import { createGame, startWave, step, STEP } from './game.js';
 import { Input } from './input.js';
+import { finalModel } from './learner.js';
 import { randomSeed } from './rng.js';
 import { cleanName, Scores } from './scores.js';
 import { Settings } from './settings.js';
@@ -12,7 +13,8 @@ const CARD_MIN_MS = 1500;
 const MAX_CATCH_UP = 5;
 
 const $ = (id) => document.getElementById(id);
-const config = await (await fetch('data/waves.json')).json();
+const [waves, lessons] = await Promise.all(['data/waves.json', 'data/lessons.json'].map(async (url) => (await fetch(url)).json()));
+const config = { ...waves, lessons };
 const settings = new Settings();
 const scores = new Scores();
 const renderer = new Renderer($('field'));
@@ -78,7 +80,9 @@ $('set-reduce').addEventListener('change', (e) => settings.set('reduceSwitch', e
 // Game flow -----------------------------------------------------------------------------------
 
 function newGame() {
-  game = createGame(config, { seed: randomSeed(), easy: settings.easy });
+  // ?seed=N replays a run (scores keep each run's seed).
+  const seed = Number(new URLSearchParams(location.search).get('seed')) || randomSeed();
+  game = createGame(config, { seed, easy: settings.easy });
   effects = new Effects(config.field, { reduced: () => settings.reduced });
   input.clear();
   accumulator = 0;
@@ -95,8 +99,25 @@ function hud() {
 function waveCleared(events) {
   const cleared = events.find((e) => e.type === 'cleared');
   const extra = events.some((e) => e.type === 'extra-life');
+  const { report } = cleared;
+  const lines = [];
+  const add = (text, cls) => {
+    const p = document.createElement('p');
+    p.textContent = text;
+    if (cls) p.className = cls;
+    lines.push(p);
+  };
+  if (report.blocked) add('You hit the Probe, so the swarm learned nothing from this wave.');
+  for (const l of report.learned) {
+    add(l.text);
+    add(l.counter, 'counter');
+  }
+  for (const id of report.repeated) add(`You did it again, so it keeps this one: ${config.lessons.find((l) => l.id === id).name}.`);
+  if (!report.learned.length && !report.repeated.length && !report.blocked) add('The swarm learned nothing about you this wave.');
+  if (report.faded.length) add(`It forgot: ${report.faded.join(', ')}.`, 'quiet');
+  add(`Bonus ${cleared.bonus}${cleared.outsmarted ? `, outsmarted ${cleared.outsmarted}` : ''}.${extra ? ' Extra life.' : ''}`, 'quiet');
   $('card-title').textContent = `Wave ${game.wave} cleared`;
-  $('card-text').textContent = `Bonus ${cleared.bonus}.${extra ? ' Extra life.' : ''} Wave ${game.wave + 1} is coming.`;
+  $('card-lines').replaceChildren(...lines);
   $('card-hint').hidden = true;
   cardReadyAt = performance.now() + CARD_MIN_MS;
   setTimeout(() => {
@@ -120,7 +141,10 @@ addEventListener('pointerdown', () => nextWave());
 function gameOver() {
   const landed = game.endReason === 'landed';
   $('over-title').textContent = landed ? 'The swarm landed' : 'Out of lives';
-  $('over-text').textContent = `Score ${game.score}, wave ${game.wave}.`;
+  const model = finalModel(game);
+  $('over-text').textContent = `Score ${game.score}, wave ${game.wave}. ${
+    model.length ? `The swarm learned: ${model.join(', ')}.` : 'The swarm learned nothing about you.'
+  }`;
   const qualifies = scores.qualifies(game.score);
   $('name-form').hidden = !qualifies;
   $('over-buttons').hidden = qualifies;
@@ -221,6 +245,9 @@ function demoState() {
 }
 
 requestAnimationFrame(frame);
+
+// For the scripted browser check before each PR (#test): lets it read the game it's playing.
+if (location.hash === '#test') globalThis.gameForTest = () => game;
 
 // Theme ---------------------------------------------------------------------------------------
 

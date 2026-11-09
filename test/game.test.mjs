@@ -2,37 +2,14 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { aliveCount, createGame, invaderPos, shooters, startWave, step, swarmSpeed } from '../src/game.js';
+import { createGame, invaderPos, shooters, startWave, step, swarmSpeed } from '../src/game.js';
+import { PLAYERS, playRun } from './players.mjs';
 
-const config = JSON.parse(readFileSync('data/waves.json', 'utf8'));
+const config = { ...JSON.parse(readFileSync('data/waves.json', 'utf8')), lessons: JSON.parse(readFileSync('data/lessons.json', 'utf8')) };
 const strip = (s) => ({ ...s, config: undefined });
 
-// A simple scripted player: chases the nearest invader, sidesteps shots, fires when clear.
-function bot(state) {
-  let target = state.cannon.x;
-  let best = Infinity;
-  for (const inv of state.invaders) {
-    if (!inv.alive) continue;
-    const { x } = invaderPos(state, inv);
-    if (Math.abs(x - state.cannon.x) < best) [best, target] = [Math.abs(x - state.cannon.x), x];
-  }
-  const danger = state.enemyShots.find((e) => e.y > 250 && Math.abs(e.x - state.cannon.x) < 16);
-  if (danger) target = state.cannon.x + (danger.x < state.cannon.x ? 40 : -40);
-  // Don't waste shots on your own barriers.
-  const blocked = state.barriers.some((b) => {
-    const col = Math.floor((state.cannon.x - b.x) / b.cell);
-    return col >= 0 && col < b.cols && [...Array(b.rows).keys()].some((r) => b.cells[r * b.cols + col]);
-  });
-  return { moveTo: target, fire: !blocked };
-}
-
-function play(seed, maxSteps = 60 * 60 * 10) {
-  const state = createGame(config, { seed });
-  for (let i = 0; i < maxSteps && state.phase !== 'over'; i++) {
-    step(state, bot(state));
-    if (state.phase === 'cleared') startWave(state, state.wave + 1);
-  }
-  return state;
+function play(seed, maxSteps) {
+  return playRun(config, PLAYERS.chaser, seed, { maxSteps }).state;
 }
 
 test('a seeded run with the same inputs is the same run', () => {
@@ -155,13 +132,16 @@ test('hitting the Probe scores its bonus and marks it hit', () => {
 
 test('clearing a wave scores its bonus, and every third wave gives a life', () => {
   const state = createGame(config, { seed: 1 });
+  let expected = 0;
   for (let wave = 1; wave <= 3; wave++) {
     state.invaders.forEach((inv) => (inv.alive = false));
-    step(state, {});
+    const cleared = step(state, {}).find((e) => e.type === 'cleared');
     assert.equal(state.phase, 'cleared');
+    assert.equal(cleared.bonus, config.waveBonus * wave);
+    expected += cleared.bonus + cleared.outsmarted;
     if (wave < 3) startWave(state, wave + 1);
   }
-  assert.equal(state.score, config.waveBonus * (1 + 2 + 3));
+  assert.equal(state.score, expected);
   assert.equal(state.lives, config.cannon.lives + 1);
 });
 
@@ -187,9 +167,4 @@ test('you get a second shot from the wave set in waves.json', () => {
   assert.equal(fireTwice(), 1);
   startWave(state, config.playerShots.secondShotWave);
   assert.equal(fireTwice(), 2);
-});
-
-test('a scripted player gets through at least one wave on most seeds', () => {
-  const waves = [1, 2, 3, 4, 5, 6, 7, 8].map((seed) => play(seed).wave);
-  assert.ok(waves.filter((w) => w >= 2).length >= 5, `waves reached: ${waves}`);
 });

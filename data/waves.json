@@ -9,17 +9,37 @@
     "startY": 60,
     "startYPerWave": 8,
     "startYMax": 100,
-    "stepDown": 8,
+    "stepDown": 6,
     "edgeMargin": 6,
     "speed": 16,
     "speedPerWave": 0.08,
     "thinBoost": 3
   },
   "invaderShots": { "speed": 130, "perSecond": 0.9, "perSecondPerWave": 0.12, "max": 3 },
-  "cannon": { "y": 376, "width": 20, "height": 10, "speed": 170, "followSpeed": 280, "lives": 3, "maxLives": 6, "extraLifeEvery": 3, "respawn": 1.2 },
+  "cannon": {
+    "y": 376,
+    "width": 20,
+    "height": 10,
+    "speed": 170,
+    "followSpeed": 280,
+    "lives": 3,
+    "maxLives": 6,
+    "extraLifeEvery": 3,
+    "respawn": 1.2
+  },
   "playerShots": { "speed": 380, "cooldown": 0.3, "secondShotWave": 4 },
   "barriers": { "count": 3, "y": 318, "cell": 4 },
   "probe": { "at": 0.4, "y": 34, "width": 22, "height": 10, "speed": 70, "bonus": 300 },
   "waveBonus": 100,
-  "easy": 0.75
+  "easy": 0.75,
+  "budgets": [4, 12, 20, 28, 36, 44, 52, 60],
+  "budgetGrowth": 8,
+  "traits": {
+    "fire": { "perLevel": 0.35 },
+    "aim": { "maxVx": 45, "laneBlend": 0.5 },
+    "dodge": { "chance": [0, 0.2, 0.4, 0.6], "cooldown": 1.5, "range": 70, "step": 12, "speed": 90 }
+  },
+  "outsmartedBonus": 250,
+  "minShotsForSpray": 10,
+  "fairness": { "runs": 50, "maxWave": 8, "minMedian": 1, "maxMedian": 9, "maxShift": 2 }
 }

@@ -49,7 +49,9 @@
           <p>Clear each wave before the swarm reaches the ground. Barriers soak up shots from both sides and come back each wave.</p>
           <p><b>Phone:</b> touch the strip under the playfield. The cannon follows your thumb and fires while you touch. Lift to stop.</p>
           <p><b>Keyboard:</b> arrows or A and D to move, Space to fire, P to pause.</p>
-          <p>Once enough of a wave is gone, the Probe crosses the top. Hit it for a bonus.</p>
+          <p><b>The swarm learns.</b> After each wave it looks at your habits: where you stand, how often you miss, which columns you hit first, and how long you hide. Your strongest habit becomes a lesson that shapes the next wave against you. The card between waves tells you what it learned and how to beat it.</p>
+          <p>You can read the swarm: antennas aim at you, vents under the body fire more, side fins dodge. Bigger parts mean more of it.</p>
+          <p>Once enough of a wave is gone, the Probe crosses the top. Hit it and the swarm learns nothing from that wave. Clearing a wave without teaching it anything pays a bonus.</p>
           <p>This is a fast reflex game and has no screen-reader mode.</p>
           <div class="buttons"><button type="button" data-go="title">Back</button></div>
         </section>
@@ -62,7 +64,7 @@
 
         <section class="screen" id="screen-card" hidden aria-live="polite">
           <h2 id="card-title">Wave cleared</h2>
-          <p id="card-text"></p>
+          <div class="card-lines" id="card-lines"></div>
           <p class="hint" id="card-hint" hidden>Tap or press a key for the next wave</p>
         </section>
 
